@@ -1,0 +1,65 @@
+package database
+
+import (
+	"fmt"
+	"reflect"
+	"sync"
+)
+
+type RedisObject struct {
+	Data any
+	Typ  string
+	TTL  int64
+}
+type Database struct {
+	mu   sync.Mutex
+	name string
+	data map[string]*RedisObject
+}
+
+func InitializeDB() *Database {
+	return &Database{
+		mu:   sync.Mutex{},
+		data: map[string]*RedisObject{},
+	}
+
+}
+
+func (db *Database) SetWithOptions(key, value, options string) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	ro := RedisObject{
+		Data: value,
+		Typ:  reflect.TypeOf(value).String(),
+		TTL:  -1,
+	}
+	db.data[key] = &ro
+
+	return nil
+}
+
+func (db *Database) Set(key, value string) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	ro := RedisObject{
+		Data: value,
+		Typ:  reflect.TypeOf(value).String(),
+		TTL:  -1,
+	}
+	db.data[key] = &ro
+
+	return nil
+}
+
+func (db *Database) Get(key string) (any, error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	if val, ok := db.data[key]; ok {
+		return val.Data, nil
+	}
+
+	return nil, fmt.Errorf("key not in database")
+}

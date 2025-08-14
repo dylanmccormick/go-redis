@@ -1,16 +1,37 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
 	"os"
 
-	resp "github.com/dylanmccormick/go-redis/internal/resp"
-	"github.com/dylanmccormick/go-redis/internal/util"
+	"github.com/dylanmccormick/go-redis/internal/cmd"
+	"github.com/dylanmccormick/go-redis/internal/database"
+	"github.com/dylanmccormick/go-redis/internal/server"
+)
+
+type Config struct {
+	Db       *database.Database
+	LogLevel LogLevel
+	Port     int
+}
+
+type LogLevel int
+
+const (
+	SILENT LogLevel = iota
+	INFO
+	ERROR
+	DEBUG
 )
 
 func main() {
+	db := database.InitializeDB()
+	config := &Config{
+		Db:       db,
+		LogLevel: INFO,
+		Port:     42069,
+	}
 
 	pingCommand := flag.NewFlagSet("PING", flag.ExitOnError)
 
@@ -38,22 +59,31 @@ func main() {
 		fmt.Println("version selected")
 	}
 
-	switch os.Args[1] {
-	case "PING":
-		pingCommand.Parse(os.Args[2:])
-
-		fmt.Println("PONG")
-	default:
-		// Ok here we're going to split into command and arguments
-
-		input := os.Args[1]
-		fmt.Printf("%#v\n", input)
-		splitCommand := bytes.Split([]byte(input), util.SeparatorBytes)
-		array, size := resp.ParseRESP(splitCommand)
-		fmt.Printf("Command: %v\t Size: %v\n", array, size)
-		v := resp.Serialize(array)
-		fmt.Printf("%#v", v)
-
+	firstArg := ""
+	if len(os.Args) > 1 {
+		firstArg = os.Args[1]
 	}
 
+	switch firstArg {
+	case "start":
+		sc := config.serve()
+		fmt.Println("interactive shell later")
+		sc.Shell()
+	case "":
+		config.serve()
+	default:
+		response, err := cmd.HandleCommand(os.Args[1:])
+		if err != nil {
+			fmt.Println(err)
+			panic(err)
+		}
+		fmt.Println(response)
+	}
+}
+
+func (c *Config) serve() *server.ServerConfig {
+	sc := server.ServerConfig{Port: 42069}
+	go server.StartServer(sc)
+
+	return &sc
 }
