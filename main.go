@@ -66,13 +66,13 @@ func main() {
 
 	switch firstArg {
 	case "start":
-		sc := config.serve()
+		sc := config.serve(db)
 		fmt.Println("interactive shell later")
 		sc.Shell()
 	case "":
-		config.serve()
+		config.serve(db)
 	default:
-		response, err := cmd.HandleCommand(os.Args[1:])
+		response, err := cmd.HandleCommand(db, os.Args[1:])
 		if err != nil {
 			fmt.Println(err)
 			panic(err)
@@ -81,8 +81,8 @@ func main() {
 	}
 }
 
-func (c *Config) serve() *server.ServerConfig {
-	sc := server.ServerConfig{Port: 42069}
+func (c *Config) serve(db *database.Database) *server.ServerConfig {
+	sc := server.ServerConfig{Port: 42069, Database: db}
 	go server.StartServer(sc)
 
 	return &sc

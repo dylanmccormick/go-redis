@@ -8,13 +8,16 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/dylanmccormick/go-redis/internal/cmd"
+	"github.com/dylanmccormick/go-redis/internal/database"
 	"github.com/dylanmccormick/go-redis/internal/util"
 )
 
 type ServerConfig struct {
 	Port int
+	Database *database.Database
 }
 
 func StartServer(c ServerConfig) {
@@ -32,12 +35,11 @@ func StartServer(c ServerConfig) {
 			log.Fatalf("A listener error occurred: %s", err)
 		}
 
-		go handleRequest(conn)
+		go c.handleRequest(conn)
 	}
-
 }
 
-func handleRequest(conn net.Conn) {
+func(c *ServerConfig) handleRequest(conn net.Conn) {
 	scanner := bufio.NewReader(conn)
 	defer conn.Close()
 	log.Printf("Handling connection")
@@ -51,17 +53,17 @@ func handleRequest(conn net.Conn) {
 		}
 		buffer = util.ClearZeros(buffer)
 		log.Printf("clean read into buffer %#v\n", string(buffer))
-		response, err := cmd.HandleMessage(buffer)
+		response, err := cmd.HandleMessage(c.Database, buffer)
 		if err != nil {
 			fmt.Println("Error: ", err)
 		}
 		fmt.Println(response)
 	}
-
 }
 
 func (c *ServerConfig) Shell() {
 	reader := bufio.NewReader(os.Stdin)
+
 	for {
 		fmt.Printf("localhost:%s> ", strconv.Itoa(c.Port))
 		input, err := reader.ReadString('\n')
@@ -69,6 +71,12 @@ func (c *ServerConfig) Shell() {
 			panic(err)
 		}
 		fmt.Printf("read input: %s\n", input)
+		strArr := strings.Split(strings.Trim(input, "\n"), " ")
+		resp , err:= cmd.HandleCommand(c.Database, strArr)
+		if err != nil {
+			fmt.Println("Error: ", err)
+			continue
+		}
+		fmt.Println(resp)
 	}
-
 }

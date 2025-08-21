@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dylanmccormick/go-redis/internal/database"
 	"github.com/dylanmccormick/go-redis/internal/resp"
 	"github.com/dylanmccormick/go-redis/internal/util"
 )
 
-func HandleMessage(buffer []byte) (string, error) {
+func HandleMessage(db *database.Database, buffer []byte) (string, error) {
 
 	command := bytes.Split(buffer, util.SeparatorBytes)
 	fmt.Println(string(command[0]))
@@ -24,7 +25,7 @@ func HandleMessage(buffer []byte) (string, error) {
 	return response, nil
 }
 
-func HandleCommand(args []string) (string, error) {
+func HandleCommand(db *database.Database, args []string) (string, error) {
 	switch strings.ToLower(args[0]) {
 	case "ping":
 		if len(args) > 2 {
@@ -43,26 +44,41 @@ func HandleCommand(args []string) (string, error) {
 		if len(args) != 3 {
 			return "", fmt.Errorf("incorrect number of arguments for SET command")
 		}
-		return handleSet(args[1], args[2])
+		return handleSet(db, args[1], args[2])
 
 	case "get":
 		if len(args) != 2 {
 			return "", fmt.Errorf("too many arguments passed to GET command")
 		}
-		return handleGet(args[1])
+		response, err :=  handleGet(db, args[1])
+		if err != nil {
+			return "", err
+		}
+
+		s, ok := response.(string)
+		if !ok {
+			return "not set up to handle non-string attributes yet", nil
+		}
+
+		return s, nil
 
 	}
 
 	return "", fmt.Errorf("%v is not a valid command", args[0])
 }
 
-func handleSet(key, value string) (string, error) {
+func handleSet(db *database.Database, key, value string) (string, error) {
 	fmt.Printf("Key: %s, Value: %s\n", key, value)
+
+	db.Set(key, value)
 
 	return "OK", nil
 
 }
 
-func handleGet(key string) (string, error) {
-	return key, nil
+func handleGet(db *database.Database, key string) (any, error) {
+
+	return db.Get(key)
 }
+
+
