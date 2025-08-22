@@ -67,14 +67,14 @@ func main() {
 
 	switch firstArg {
 	case "start":
-		sc := config.serve(db)
+		sc := config.serveInteractive()
 		fmt.Println("interactive shell later")
 		sc.Shell()
 	case "":
 		fmt.Println("Starting server")
-		config.serve(db)
+		config.serve()
 	default:
-		response, err := cmd.HandleCommand(db, os.Args[1:])
+		response, err := cmd.HandleCommand(config.Db, os.Args[1:])
 		if err != nil {
 			fmt.Println(err)
 			panic(err)
@@ -83,13 +83,22 @@ func main() {
 	}
 }
 
-func (c *Config) serve(db *database.Database) *server.ServerConfig {
+func (c *Config) serve() *server.ServerConfig {
 	var wg sync.WaitGroup
 	wg.Add(1)
-	sc := server.ServerConfig{Port: 6379, Database: db}
+	sc := server.ServerConfig{Port: c.Port, Database: c.Db}
 
 	go server.StartServer(sc, &wg)
 
 	wg.Wait()
+	return &sc
+}
+
+func (c *Config) serveInteractive() *server.ServerConfig {
+	var wg sync.WaitGroup
+	sc := server.ServerConfig{Port: c.Port, Database: c.Db}
+
+	go server.StartServer(sc, &wg)
+
 	return &sc
 }

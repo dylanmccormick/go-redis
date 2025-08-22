@@ -63,3 +63,81 @@ func (db *Database) Get(key string) (any, error) {
 
 	return nil, fmt.Errorf("key not in database")
 }
+
+func (db *Database) RPush(key, value string) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	
+	if _, ok := db.data[key]; !ok {
+		ro := RedisObject {
+			Data: []string{},
+			Typ: reflect.TypeOf([]string{}).String(),
+			TTL: -1,
+		}
+		db.data[key] = &ro
+	}
+	if db.data[key].Typ != "[]string" {
+		return fmt.Errorf("incorrect type for key %s", key)
+	}
+	db.data[key].Data = append(db.data[key].Data.([]string), value)
+
+	return nil
+}
+
+func (db *Database) LPush(key, value string) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	
+	if _, ok := db.data[key]; !ok {
+		ro := RedisObject {
+			Data: []string{},
+			Typ: reflect.TypeOf([]string{}).String(),
+			TTL: -1,
+		}
+		db.data[key] = &ro
+	}
+	val, _ := db.data[key]
+	if val.Typ != "[]string" {
+		return fmt.Errorf("incorrect type for key %s", key)
+	}
+	d, _ := val.Data.([]string)
+	db.data[key].Data = append(db.data[key].Data.([]string), value)
+	db.data[key].Data = append([]string{value}, d...)
+
+	return nil
+}
+
+func (db *Database) RPop(key string) (string, error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	
+	if _, ok := db.data[key]; !ok {
+		return "", fmt.Errorf("Key not found in db")
+	}
+	val, _ := db.data[key]
+	if val.Typ != "[]string" {
+		return "", fmt.Errorf("incorrect type for key %s", key)
+	}
+	d, _ := val.Data.([]string)
+	lastIdx := len(d) - 1
+	db.data[key].Data = d[:lastIdx]
+
+	return d[lastIdx], nil
+}
+
+func (db *Database) LPop(key string) (string, error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	
+	if _, ok := db.data[key]; !ok {
+		return "", fmt.Errorf("Key not found in db")
+	}
+	val, _ := db.data[key]
+	if val.Typ != "[]string" {
+		return "", fmt.Errorf("incorrect type for key %s", key)
+	}
+	d, _ := val.Data.([]string)
+	db.data[key].Data = d[1:]
+
+	return d[0], nil
+}

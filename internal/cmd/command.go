@@ -86,7 +86,6 @@ func HandleCommand(db *database.Database, args []string) (string, error) {
 			return "", fmt.Errorf("incorrect number of arguments for SET command")
 		}
 		return handleSet(db, args[1], args[2])
-
 	case "get":
 		if len(args) != 2 {
 			return "", fmt.Errorf("too many arguments passed to GET command")
@@ -102,6 +101,33 @@ func HandleCommand(db *database.Database, args []string) (string, error) {
 		}
 
 		return s, nil
+	case "rpush":
+		response, err := handleRPush(db, args[1], args[2])
+		if err != nil {
+			return "", err
+		}
+		return response, nil
+
+	case "lpush":
+		response, err := handleLPush(db, args[1], args[2])
+		if err != nil {
+			return "", err
+		}
+		return response, nil
+
+	case "rpop":
+		response, err := handleRPop(db, args[1])
+		if err != nil {
+			return "", err
+		}
+		return response, nil
+
+	case "lpop":
+		response, err := handleLPop(db, args[1])
+		if err != nil {
+			return "", err
+		}
+		return response, nil
 
 	}
 
@@ -122,4 +148,22 @@ func handleGet(db *database.Database, key string) (any, error) {
 	return db.Get(key)
 }
 
+
+func handleRPush(db *database.Database, key, value string) (string, error) {
+	db.RPush(key, value)
+	return "OK", nil
+}
+
+func handleLPush(db *database.Database, key, value string) (string, error) {
+	db.LPush(key, value)
+	return "OK", nil
+}
+
+func handleRPop(db *database.Database, key string) (string, error) {
+	return db.RPop(key)
+}
+
+func handleLPop(db *database.Database, key string) (string, error) {
+	return db.LPop(key)
+}
 
