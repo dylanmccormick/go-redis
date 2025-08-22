@@ -13,7 +13,6 @@ import (
 )
 
 func HandleMessage(db *database.Database, buffer []byte) (string, error) {
-
 	command := bytes.Split(buffer, util.SeparatorBytes)
 	fmt.Println(string(command[0]))
 	request, _, err := resp.ParseRESP(command)
@@ -25,7 +24,6 @@ func HandleMessage(db *database.Database, buffer []byte) (string, error) {
 }
 
 func HandleRespRequest(db *database.Database, request any) (string, error) {
-
 	switch v := request.(type) {
 	case []any:
 		return HandleCommand(db, requestToStringArr(v))
@@ -38,14 +36,12 @@ func HandleRespRequest(db *database.Database, request any) (string, error) {
 		return "", fmt.Errorf("Unexpected type from resp statement: %T", v)
 
 	}
-
 }
 
-func requestToStringArr(arr []any) ([]string) {
-
+func requestToStringArr(arr []any) []string {
 	var output []string
 
-	for _, val := range(arr) {
+	for _, val := range arr {
 		switch v := val.(type) {
 		case []any:
 			fmt.Printf("Got sub array. Figure out how to handle")
@@ -61,7 +57,6 @@ func requestToStringArr(arr []any) ([]string) {
 			fmt.Printf("Got unexpected type: %T\n", v)
 			return output
 		}
-
 	}
 	return output
 }
@@ -90,7 +85,7 @@ func HandleCommand(db *database.Database, args []string) (string, error) {
 		if len(args) != 2 {
 			return "", fmt.Errorf("too many arguments passed to GET command")
 		}
-		response, err :=  handleGet(db, args[1])
+		response, err := handleGet(db, args[1])
 		if err != nil {
 			return "", err
 		}
@@ -102,14 +97,15 @@ func HandleCommand(db *database.Database, args []string) (string, error) {
 
 		return s, nil
 	case "rpush":
-		response, err := handleRPush(db, args[1], args[2])
+		// response, err := handleRPush(db, args[1], args[2:])
+		response, err := handlePush(args[1], args[2:], db.RPush)
 		if err != nil {
 			return "", err
 		}
 		return response, nil
 
 	case "lpush":
-		response, err := handleLPush(db, args[1], args[2])
+		response, err := handlePush(args[1], args[2:], db.LPush)
 		if err != nil {
 			return "", err
 		}
@@ -129,6 +125,13 @@ func HandleCommand(db *database.Database, args []string) (string, error) {
 		}
 		return response, nil
 
+	case "lrange":
+		response, err := handleLRange(db, args[1], args[2], args[3])
+		if err != nil {
+			return "", err
+		}
+		return response, nil
+
 	}
 
 	return "", fmt.Errorf("%v is not a valid command", args[0])
@@ -140,23 +143,45 @@ func handleSet(db *database.Database, key, value string) (string, error) {
 	db.Set(key, value)
 
 	return "OK", nil
-
 }
 
 func handleGet(db *database.Database, key string) (any, error) {
-
 	return db.Get(key)
 }
 
+// func handleRPush(db *database.Database, key string, values []string) (string, error) {
+// 	var response string
+// 	for _, v := range values {
+// 		response, err := db.RPush(key, v)
+// 		if err != nil {
+// 			return response, err
+// 		}
+//
+// 	}
+//
+// 	return response,  nil
+// }
 
-func handleRPush(db *database.Database, key, value string) (string, error) {
-	db.RPush(key, value)
-	return "OK", nil
-}
+// func handleLPush(db *database.Database, key string, values []string) (string, error) {
+// 	var response string
+// 	for _, v := range values {
+// 		response, err := db.LPush(key, v)
+// 		if err != nil {
+// 			return response, err
+// 		}
+// 	}
+// 	return response,  nil
+// }
 
-func handleLPush(db *database.Database, key, value string) (string, error) {
-	db.LPush(key, value)
-	return "OK", nil
+func handlePush(key string, values []string, f func(string, string)(string, error)) (string, error){
+	var response string
+	for _, v := range values {
+		response, err := f(key, v)
+		if err != nil {
+			return response, err
+		}
+	}
+	return response,  nil
 }
 
 func handleRPop(db *database.Database, key string) (string, error) {
@@ -167,3 +192,15 @@ func handleLPop(db *database.Database, key string) (string, error) {
 	return db.LPop(key)
 }
 
+func handleLRange(db *database.Database, key, start, stop string) (string, error) {
+	startInt, err := strconv.Atoi(start)
+	if err != nil {
+		return "", fmt.Errorf("Wrong type for argument '%s'", start)
+	}
+	stopInt, err := strconv.Atoi(stop)
+	if err != nil {
+		return "", fmt.Errorf("Wrong type for argument '%s'", stop)
+	}
+
+	return db.LRange(key, startInt, stopInt)
+}

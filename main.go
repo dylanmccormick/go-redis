@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"sync"
@@ -33,33 +32,6 @@ func main() {
 		LogLevel: INFO,
 		Port:     42069,
 	}
-
-	pingCommand := flag.NewFlagSet("PING", flag.ExitOnError)
-
-	var verbose bool
-	var help bool
-	var version bool
-
-	flag.BoolVar(&verbose, "v", false, "verbose output")
-	flag.BoolVar(&help, "h", false, "help message output")
-	flag.BoolVar(&version, "version", false, "CLI version")
-	pingCommand.BoolVar(&verbose, "verbose", false, "verbose output")
-	pingCommand.BoolVar(&verbose, "v", false, "verbose output")
-
-	flag.Parse()
-
-	if verbose {
-		fmt.Println("Verbose selected")
-	}
-
-	if help {
-		fmt.Println("help selected")
-	}
-
-	if version {
-		fmt.Println("version selected")
-	}
-
 	firstArg := ""
 	if len(os.Args) > 1 {
 		firstArg = os.Args[1]
@@ -95,6 +67,8 @@ func (c *Config) serve() *server.ServerConfig {
 }
 
 func (c *Config) serveInteractive() *server.ServerConfig {
+	// TODO: Figure out how to make this the same method as the other one. I think I'm using wait groups incorrectly or something. 
+	// Or this needs to have a wait group and be run as a goroutine. 
 	var wg sync.WaitGroup
 	sc := server.ServerConfig{Port: c.Port, Database: c.Db}
 
