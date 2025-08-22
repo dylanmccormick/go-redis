@@ -13,18 +13,23 @@ func ParseRESP(splitCommand [][]byte) (any, int, error) {
 	switch splitCommand[0][0] {
 
 	case util.Star:
+		// []any
 		return parseArray(splitCommand)
 
 	case util.DollarSign:
+		// string
 		return parseBulkString(splitCommand)
 
 	case util.Dash:
+		// string
 		return parseBulkString(splitCommand)
 
 	case util.Colon:
+		// int
 		return parseInt(splitCommand)
 
 	case util.Plus:
+		// string
 		return parseSimpleString(splitCommand)
 	}
 

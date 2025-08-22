@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/dylanmccormick/go-redis/internal/cmd"
 	"github.com/dylanmccormick/go-redis/internal/database"
@@ -70,6 +71,7 @@ func main() {
 		fmt.Println("interactive shell later")
 		sc.Shell()
 	case "":
+		fmt.Println("Starting server")
 		config.serve(db)
 	default:
 		response, err := cmd.HandleCommand(db, os.Args[1:])
@@ -82,8 +84,12 @@ func main() {
 }
 
 func (c *Config) serve(db *database.Database) *server.ServerConfig {
-	sc := server.ServerConfig{Port: 42069, Database: db}
-	go server.StartServer(sc)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	sc := server.ServerConfig{Port: 6379, Database: db}
 
+	go server.StartServer(sc, &wg)
+
+	wg.Wait()
 	return &sc
 }

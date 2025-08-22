@@ -4,6 +4,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/dylanmccormick/go-redis/internal/database"
@@ -20,9 +21,49 @@ func HandleMessage(db *database.Database, buffer []byte) (string, error) {
 		fmt.Printf("Invalid request found: %s", err)
 		return "", err
 	}
-	response := fmt.Sprintf("%#v", request)
+	return HandleRespRequest(db, request)
+}
 
-	return response, nil
+func HandleRespRequest(db *database.Database, request any) (string, error) {
+
+	switch v := request.(type) {
+	case []any:
+		return HandleCommand(db, requestToStringArr(v))
+		// send to array handlers?
+	case string:
+		return HandleCommand(db, []string{v})
+	case int:
+		return "", fmt.Errorf("Not yet implemented. Don't think this should be happening")
+	default:
+		return "", fmt.Errorf("Unexpected type from resp statement: %T", v)
+
+	}
+
+}
+
+func requestToStringArr(arr []any) ([]string) {
+
+	var output []string
+
+	for _, val := range(arr) {
+		switch v := val.(type) {
+		case []any:
+			fmt.Printf("Got sub array. Figure out how to handle")
+			return output
+
+		case string:
+			output = append(output, v)
+
+		case int:
+			output = append(output, strconv.Itoa(v))
+
+		default:
+			fmt.Printf("Got unexpected type: %T\n", v)
+			return output
+		}
+
+	}
+	return output
 }
 
 func HandleCommand(db *database.Database, args []string) (string, error) {

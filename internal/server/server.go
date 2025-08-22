@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/dylanmccormick/go-redis/internal/cmd"
 	"github.com/dylanmccormick/go-redis/internal/database"
@@ -20,7 +21,7 @@ type ServerConfig struct {
 	Database *database.Database
 }
 
-func StartServer(c ServerConfig) {
+func StartServer(c ServerConfig, wg *sync.WaitGroup) {
 	listener, err := net.Listen("tcp", ":"+strconv.Itoa(c.Port))
 	log.Printf("Server is listening on port :%s\n", strconv.Itoa(c.Port))
 	if err != nil {
@@ -58,6 +59,7 @@ func(c *ServerConfig) handleRequest(conn net.Conn) {
 			fmt.Println("Error: ", err)
 		}
 		fmt.Println(response)
+		conn.Write([]byte(response))
 	}
 }
 
