@@ -1,0 +1,1 @@
+"test", "*6\r\n$5\r\nhello\r\n$2\r\nmy\r\n$4\r\nname\r\n$2\r\nis\r\n$3\r\ndon\r\n$7\r\nquixote\r\n"

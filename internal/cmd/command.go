@@ -4,6 +4,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -14,7 +15,6 @@ import (
 
 func HandleMessage(db *database.Database, buffer []byte) (string, error) {
 	command := bytes.Split(buffer, util.SeparatorBytes)
-	fmt.Println(string(command[0]))
 	request, _, err := resp.ParseRESP(command)
 	if err != nil {
 		fmt.Printf("Invalid request found: %s", err)
@@ -63,6 +63,9 @@ func requestToStringArr(arr []any) []string {
 
 func HandleCommand(db *database.Database, args []string) (string, error) {
 	switch strings.ToLower(args[0]) {
+	case "save":
+		Save(db)
+		return "", nil
 	case "ping":
 		if len(args) > 2 {
 			return "", fmt.Errorf("too many arguments passed to PING command")
@@ -97,7 +100,6 @@ func HandleCommand(db *database.Database, args []string) (string, error) {
 
 		return s, nil
 	case "rpush":
-		// response, err := handleRPush(db, args[1], args[2:])
 		response, err := handlePush(args[1], args[2:], db.RPush)
 		if err != nil {
 			return "", err
@@ -126,6 +128,9 @@ func HandleCommand(db *database.Database, args []string) (string, error) {
 		return response, nil
 
 	case "lrange":
+		if len(args) != 4 {
+			return "", fmt.Errorf("not enough arguments passed to LRANGE command. Must have 4 arguments")
+		}
 		response, err := handleLRange(db, args[1], args[2], args[3])
 		if err != nil {
 			return "", err
@@ -149,31 +154,7 @@ func handleGet(db *database.Database, key string) (any, error) {
 	return db.Get(key)
 }
 
-// func handleRPush(db *database.Database, key string, values []string) (string, error) {
-// 	var response string
-// 	for _, v := range values {
-// 		response, err := db.RPush(key, v)
-// 		if err != nil {
-// 			return response, err
-// 		}
-//
-// 	}
-//
-// 	return response,  nil
-// }
-
-// func handleLPush(db *database.Database, key string, values []string) (string, error) {
-// 	var response string
-// 	for _, v := range values {
-// 		response, err := db.LPush(key, v)
-// 		if err != nil {
-// 			return response, err
-// 		}
-// 	}
-// 	return response,  nil
-// }
-
-func handlePush(key string, values []string, f func(string, string)(string, error)) (string, error){
+func handlePush(key string, values []string, f func(string, string) (string, error)) (string, error) {
 	var response string
 	for _, v := range values {
 		response, err := f(key, v)
@@ -181,7 +162,7 @@ func handlePush(key string, values []string, f func(string, string)(string, erro
 			return response, err
 		}
 	}
-	return response,  nil
+	return response, nil
 }
 
 func handleRPop(db *database.Database, key string) (string, error) {
@@ -203,4 +184,56 @@ func handleLRange(db *database.Database, key, start, stop string) (string, error
 	}
 
 	return db.LRange(key, startInt, stopInt)
+}
+
+func Load(db *database.Database) {
+	dat, err := os.ReadFile("./data.txt")
+	if err != nil {
+		fmt.Println("File does not exist")
+		return
+	}
+	lines := bytes.Split(dat, []byte{util.NewLine})
+	for _, v := range lines[:len(lines)-1] {
+		var respInput [][]byte
+		args := bytes.Split(v, []byte{','})
+		key := strings.Trim(string(args[0]), "\"")
+		str, err := strconv.Unquote(strings.Trim(string(args[1]), " "))
+		if err != nil {
+			panic(err)
+		}
+		byteArr := []byte(str)
+
+		respInput = bytes.Split(byteArr, util.SeparatorBytes)
+		val, _, err := resp.ParseRESP(respInput)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("Key: %s, Val: %#v\n", key, val)
+
+		switch t := val.(type) {
+		case []string:
+			fmt.Println("Handling string")
+			HandleCommand(db, append([]string{"RPUSH", key}, t...))
+		case string:
+			HandleCommand(db, []string{"SET", key, t})
+		case []any:
+			if len(t) == 0{
+				HandleCommand(db, []string{"RPUSH", key, ""})
+				HandleCommand(db, []string{"RPOP", key})
+			}
+			var input []string
+			for _, str := range t {
+				input = append(input, str.(string))
+			}
+			HandleCommand(db, append([]string{"RPUSH", key}, input...))
+		default:
+			fmt.Printf("Got unexpected type: %T", t)
+			panic(fmt.Errorf("file contained unexpected type %T", t))
+		}
+
+	}
+}
+
+func Save(db *database.Database) {
+	db.Save()
 }

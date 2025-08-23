@@ -112,6 +112,19 @@ func serializeArray(arr []any) (string, error) {
 	return stringBuilder, nil
 }
 
+func serializeStringArray(arr []string) (string, error) {
+	stringBuilder := fmt.Sprintf("%s%d%s", string(util.Star), len(arr), util.CRLF)
+	for _, val := range arr {
+		str, err := Serialize(val)
+		if err != nil {
+			return "", err
+		}
+		stringBuilder += str
+	}
+
+	return stringBuilder, nil
+}
+
 func Serialize(val any) (string, error) {
 
 	switch v := val.(type) {
@@ -120,7 +133,9 @@ func Serialize(val any) (string, error) {
 	case string:
 		return fmt.Sprintf("%s%d%s%s%s", string(util.DollarSign), len(v), util.CRLF, v, util.CRLF), nil
 	case []any:
-		return serializeArray((val).([]any))
+		return serializeArray(v)
+	case []string:
+		return serializeStringArray((v))
 	case nil:
 		return fmt.Sprintf("%s%d%s", string(util.DollarSign), -1, util.CRLF), nil
 	default:

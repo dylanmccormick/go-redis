@@ -2,8 +2,12 @@ package database
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"sync"
+
+	"github.com/dylanmccormick/go-redis/internal/resp"
+	// "github.com/dylanmccormick/go-redis/internal/resp"
 )
 
 type RedisObject struct {
@@ -152,9 +156,41 @@ func (db *Database) LRange(key string, start, stop int) (string, error) {
 		return "", fmt.Errorf("Data is not of type array")
 	}
 
-	for i, v := range d {
-		stringBuilder += fmt.Sprintf("%d) %s\n", i, v)
+	if stop > len(d) {
+		stop = len(d)
+	}
+
+	for i, v := range d[start:stop] {
+		stringBuilder += fmt.Sprintf("%d) %s\n", i+1, v)
 	}
 
 	return stringBuilder, nil
+}
+
+func (db *Database) Save() {
+	var f *os.File
+	var err error
+
+	f, err = os.Create("data.txt")
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer f.Close()
+
+	for k, v := range db.data {
+		fmt.Printf("Key: %#v, Val: %#v\n", k, v)
+		strVal, err := resp.Serialize(v.Data)
+		if err != nil {
+			panic(err)
+		}
+		strCat := fmt.Sprintf("%#v, %#v\n", k, strVal)
+		line := []byte(strCat)
+		n, err := f.Write(line)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Printf("Wrote %d bytes\n", n)
+
+	}
 }

@@ -27,6 +27,8 @@ const (
 
 func main() {
 	db := database.InitializeDB()
+	cmd.Load(db)
+	defer cmd.Save(db)
 	config := &Config{
 		Db:       db,
 		LogLevel: INFO,
