@@ -32,7 +32,7 @@ func main() {
 	config := &Config{
 		Db:       db,
 		LogLevel: INFO,
-		Port:     42069,
+		Port:     6379,
 	}
 	firstArg := ""
 	if len(os.Args) > 1 {
